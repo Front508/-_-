@@ -1,0 +1,848 @@
+<title>Вектор власти</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: three columns like the prototype slides: nav | map + event | state of the country. Collapses to one column on phones. Dark neon is a deliberate single look for the game. */
+:root{
+  --bg:#070b14; --panel:#131a2f; --panel2:#1a2342; --line:#3d5bd6; --line-soft:#26325e;
+  --cyan:#2be3f7; --text:#e8edff; --muted:#8e9bc4; --good:#2fe58a; --warn:#ff9f43; --bad:#ff4f60;
+  --map:#0c2736; --map-line:#2a6f86;
+  --f-head:'Exo 2','Segoe UI',system-ui,sans-serif; --f-body:'Inter','Segoe UI',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--f-body);font-size:14px;line-height:1.5;
+  padding-block:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-head);margin:0;text-wrap:balance}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,.term:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+#app{display:grid;grid-template-columns:176px minmax(0,1fr) 244px;gap:14px;max-width:1240px;margin:0 auto;align-items:start}
+.side{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.brand{display:flex;flex-direction:column;align-items:center;gap:6px;font-family:var(--f-head);font-weight:700;font-size:15px;text-align:center;margin-bottom:8px}
+.brand svg{width:62px;height:62px}
+.nav{width:100%;display:flex;flex-direction:column;gap:6px}
+.nav button{background:none;border:1px solid transparent;border-radius:6px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:var(--f-head);font-weight:600;font-size:16px;color:var(--cyan)}
+.nav button svg{width:44px;height:44px;stroke:var(--text);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-current="true"]{background:var(--panel2);border-color:var(--line)}
+.nav button[aria-current="true"] svg{stroke:var(--cyan);filter:drop-shadow(0 0 6px var(--cyan))}
+.nav .badge{background:var(--bad);color:#fff;border-radius:10px;font-size:11px;padding:0 7px;line-height:18px;font-family:var(--f-body)}
+.center{min-width:0;display:flex;flex-direction:column;gap:12px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+.topbar b{color:var(--text);font-family:var(--f-head)}
+.topbar .btns{display:flex;gap:8px}
+.ghost{background:var(--panel);border:1px solid var(--line-soft);border-radius:5px;padding:5px 11px;color:var(--text)}
+.ghost:hover{border-color:var(--cyan)}
+.panel{background:var(--panel);border:1px solid var(--line-soft);border-radius:6px;padding:14px}
+.mapbox{background:#091823;border:1px solid var(--line-soft);border-radius:6px;padding:8px;position:relative}
+.mapbox svg{display:block;width:100%;height:auto;max-height:46vh}
+.region{stroke:var(--map-line);stroke-width:1.4;fill:var(--map);transition:fill .3s}
+.region.crisis{stroke:var(--bad);stroke-width:2.2;fill:#4a1c26;animation:pulse 1.6s ease-in-out infinite}
+.heat .region{stroke:#5fb8d0;stroke-width:1}
+@keyframes pulse{50%{stroke-opacity:.35}}
+.rlabel{fill:var(--muted);font:600 11px var(--f-head);text-anchor:middle;letter-spacing:.08em;text-transform:uppercase}
+.ricon{font-size:20px;text-anchor:middle}
+.tag{fill:#3a1018;stroke:var(--bad)}
+.tagt{fill:#ffb3bb;font:600 10px var(--f-body);letter-spacing:.06em}
+.event{border:1px solid var(--cyan);background:#101a30;border-radius:8px;padding:16px 18px;box-shadow:0 0 18px rgba(43,227,247,.12)}
+.event h2{font-size:19px;color:var(--text);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.event h2 .alert{color:var(--bad)}
+.event p{margin:8px 0 14px;color:#cdd6f6;max-width:70ch}
+.opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.opt{background:var(--panel2);border:1px solid var(--line-soft);border-radius:6px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:8px;min-width:0}
+.opt:hover{border-color:var(--cyan);background:#202b52}
+.opt h3{font-size:14px;color:var(--cyan);text-transform:uppercase;letter-spacing:.04em}
+.opt .d{color:var(--muted);font-size:12.5px}
+.chips{display:flex;flex-direction:column;gap:3px;margin-top:auto}
+.chip{font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums}
+.chip.g{color:var(--good)}.chip.b{color:var(--bad)}.chip.n{color:var(--muted)}
+.chip.later{color:var(--warn)}
+.echo{border:1px solid #6b5420;background:#1c1810;border-radius:6px;padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+.echo h4{margin:0;font:600 12px var(--f-head);letter-spacing:.1em;color:var(--warn);text-transform:uppercase}
+.echo p{margin:0;color:#e6d9b5}
+.hint{color:var(--muted);font-size:12.5px;margin:0}
+.right{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px 14px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;min-width:0}
+.stat{width:100%}
+.stat .k{font:600 17px var(--f-head);color:var(--cyan)}
+.stat .v{font:700 17px var(--f-head);font-variant-numeric:tabular-nums}
+.stat .s{font:600 11px var(--f-body);letter-spacing:.06em;text-transform:uppercase}
+.good{color:var(--good)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.spark{width:100%;height:auto;display:block}
+.spark text{fill:var(--muted);font:10px var(--f-body)}
+.view{display:flex;flex-direction:column;gap:12px}
+.row2{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px}
+.slider{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;margin-bottom:12px}
+.slider label{color:var(--text)}
+.slider output{font-variant-numeric:tabular-nums;color:var(--cyan);font-weight:600}
+.slider input{grid-column:1/-1;width:100%;accent-color:var(--cyan)}
+.kv{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
+.kv:last-child{border:none}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.charts h4,.panel h3{margin:0 0 6px;font-size:14px;color:var(--cyan)}
+.bars{display:flex;gap:18px;justify-content:center;align-items:flex-end;height:210px;margin-top:6px}
+.bar{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;color:var(--muted);text-align:center;width:64px}
+.bar .tube{width:34px;height:150px;border:2px solid var(--c);border-radius:17px;display:flex;align-items:flex-end;padding:3px}
+.bar .fill{width:100%;border-radius:13px;background:var(--c);box-shadow:0 0 12px var(--c);min-height:6px}
+.bar b{font:700 13px var(--f-head);color:var(--c)}
+.rl{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line-soft);flex-wrap:wrap}
+.rl:last-child{border:none}
+.grp{display:grid;grid-template-columns:150px 1fr 40px;gap:8px;align-items:center;margin:7px 0}
+.grp .tr{height:8px;background:#0b1226;border-radius:4px;overflow:hidden}
+.grp .tr i{display:block;height:100%;background:var(--cyan)}
+.decree{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line-soft);flex-wrap:wrap}
+.decree:last-child{border:none}
+.decree div{min-width:0;flex:1 1 220px}
+.decree small{color:var(--muted);display:block}
+.primary{background:var(--cyan);color:#021018;border:none;border-radius:5px;padding:8px 16px;font-weight:600}
+.primary:hover{filter:brightness(1.1)}
+.primary:disabled,.ghost:disabled{opacity:.4;cursor:not-allowed}
+.jr{font-size:12.5px;color:var(--muted);padding:3px 0}
+.jr b{color:var(--text);font-weight:500}
+.term{border-bottom:1px dashed var(--cyan);cursor:help;color:inherit}
+#tip{position:fixed;z-index:50;max-width:290px;background:#0a1020;border:1px solid var(--cyan);border-radius:6px;padding:9px 11px;font-size:12.5px;line-height:1.45;color:var(--text);box-shadow:0 6px 24px rgba(0,0,0,.6);pointer-events:none}
+#tip b{color:var(--cyan);display:block;margin-bottom:2px;font-family:var(--f-head)}
+#modal{position:fixed;inset:0;z-index:40;background:rgba(3,6,12,.82);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+.mbox{background:var(--panel);border:1px solid var(--cyan);border-radius:8px;max-width:620px;width:100%;padding:20px 22px;max-height:92vh;overflow:auto}
+.mbox h2{font-size:22px;margin-bottom:10px}
+.mbox p{margin:8px 0}
+.mbox ul{padding-left:18px;margin:8px 0}
+.mbox .act{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.lesson{border-left:3px solid var(--cyan);background:#0e1730;padding:8px 12px;border-radius:0 5px 5px 0;margin:10px 0}
+.delta{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;margin-top:6px}
+.delta td,.delta th{padding:4px 6px;border-bottom:1px solid var(--line-soft);text-align:right;font-weight:400}
+.delta th:first-child,.delta td:first-child{text-align:left}
+.delta th{color:var(--muted);font-size:12px}
+.gl dt{color:var(--cyan);font-weight:600;margin-top:8px}.gl dd{margin:0;color:#cdd6f6}
+.score{font:700 44px var(--f-head);color:var(--cyan)}
+@media (max-width:980px){
+  #app{grid-template-columns:minmax(0,1fr)}
+  .side{flex-direction:row;justify-content:space-between;padding:8px}
+  .brand{flex-direction:row;margin:0}.brand svg{width:36px;height:36px}.brand span{display:none}
+  .nav{flex-direction:row;justify-content:flex-end;width:auto;gap:2px}
+  .nav button{padding:6px 8px;font-size:12px}.nav button svg{width:28px;height:28px}
+  .right{order:-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .right .brandr{display:none}
+  .opts,.row2{grid-template-columns:minmax(0,1fr)}
+  .grp{grid-template-columns:110px 1fr 36px}
+}
+@media (prefers-reduced-motion:reduce){.region.crisis{animation:none}}
+</style>
+
+<div id="app">
+  <nav class="side" aria-label="Разделы">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6b7fb5"/><stop offset="1" stop-color="#27335f"/></linearGradient></defs><path d="M32 4l22 8v18c0 14-9 25-22 30C19 55 10 44 10 30V12z" fill="url(#lg)" stroke="#f4a63a" stroke-width="2.5"/><path d="M19 20h9l4 14 4-14h9L36 46h-8z" fill="#f4a63a"/></svg>
+      <span>Вектор власти</span>
+    </div>
+    <div class="nav" id="nav"></div>
+  </nav>
+  <main class="center" id="center"></main>
+  <aside class="right" id="right" aria-label="Показатели страны"></aside>
+</div>
+<div id="tip" role="tooltip" hidden></div>
+
+
+<script>
+'use strict';
+const MAX_TURN = 20;
+const $ = s => document.querySelector(s);
+const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
+const rnd = (a, b) => a + Math.random() * (b - a);
+const sg = (v, d = 1) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d);
+
+/* ---------- Глоссарий (подсказки) ---------- */
+const GL = {
+  'ВВП': 'Валовой внутренний продукт: стоимость всех товаров и услуг, произведённых в стране за период. Рост ВВП означает, что экономика расширяется.',
+  'рост ВВП': 'На сколько процентов за год выросла экономика. Отрицательное значение значит спад.',
+  'инфляция': 'Рост общего уровня цен. При инфляции 5% в год то, что стоило 100 ₽, через год стоит 105 ₽. Деньги и зарплаты обесцениваются.',
+  'бюджет': 'Казна государства: сколько денег есть сейчас. Пополняется налогами, тратится на содержание страны.',
+  'дефицит': 'Расходы больше доходов. Разницу покрывают из накоплений или долгами.',
+  'лояльность': 'Доля граждан и элит, которые поддерживают власть. Низкая лояльность ведёт к протестам и смене власти.',
+  'субсидия': 'Деньги из бюджета на поддержку отрасли или цены. Решает проблему сразу, но может отучить бизнес от самостоятельности.',
+  'тариф': 'Установленная цена на услуги монополий: электричество, газ, транспорт. Низкий тариф удобен людям, но не даёт денег на ремонт сетей.',
+  'ключевая ставка': 'Процент, под который центральный банк кредитует банки. Выше ставка: дороже кредиты, ниже спрос, медленнее инфляция и рост.',
+  'налоговая ставка': 'Доля дохода, которую государство забирает налогом. Выше ставка: больше денег в казне сегодня, но слабее стимул работать и инвестировать.',
+  'резервный фонд': 'Накопления государства на чёрный день. Сглаживает кризисы, но деньги в нём не работают на экономику сегодня.',
+  'эмиссия': 'Печать новых денег. Казна получает деньги сразу, но денег становится больше, чем товаров, и цены растут.',
+  'голландская болезнь': 'Ситуация, когда экспорт ресурсов делает национальную валюту дорогой, и другие отрасли теряют конкурентоспособность. Экономика становится зависимой от одного товара.',
+  'индексация': 'Повышение выплат вслед за ценами, чтобы покупательная способность не падала.',
+  'импортозамещение': 'Развитие собственного производства вместо закупок из-за рубежа. Требует времени и вложений, зато снижает зависимость.',
+  'санкции': 'Ограничения торговли и финансов со стороны других стран. Бьют по экспорту, импорту и доступу к кредитам.',
+  'МРОТ': 'Минимальный размер оплаты труда: нижняя граница зарплаты по закону.',
+  'моральный риск': 'Когда участники рынка рискуют сильнее, зная, что государство спасёт их от убытков.',
+  'облигации': 'Государственные долговые бумаги. Казна получает деньги сейчас и обязуется вернуть их с процентами.',
+  'ценовой контроль': 'Запрет повышать цены выше установленных. Цены держатся, но товар становится невыгодно производить, и он пропадает с полок.',
+  'утечка мозгов': 'Отъезд квалифицированных специалистов в другие страны.',
+  'безработица': 'Доля людей, которые хотят работать, но не находят работу.',
+  'автоматизация': 'Замена ручного труда машинами и программами. Повышает производительность, но сокращает часть рабочих мест.',
+  'пенсионный возраст': 'Возраст, с которого человек получает пенсию. Рост возраста снижает нагрузку на бюджет, но вызывает недовольство.',
+  'протекционизм': 'Защита внутреннего рынка пошлинами и запретами на импорт.',
+  'долг': 'Деньги, взятые взаймы. Чем больше долг, тем больше процентов ежеквартально уходит из бюджета.',
+  'мультипликатор': 'Эффект цепочки: рубль, вложенный в проект, приносит больше рубля дохода экономике.',
+  'ликвидность': 'Доступность денег: банкам и компаниям хватает наличных, чтобы платить по счетам.'
+};
+function fmt(t) {
+  return t.replace(/\{\{([^|}]+)(?:\|([^}]+))?\}\}/g, (m, k, s) => {
+    if (!GL[k]) console.warn('нет термина', k);
+    return `<span class="term" tabindex="0" data-term="${k}">${s || k}</span>`;
+  });
+}
+
+/* ---------- Карта ---------- */
+const REG = {
+  n:  {name:'Север', type:'Энергетика', icon:'⚡', pts:'130,85 240,40 380,30 400,120 300,150 200,115', lx:290, ly:100},
+  ne: {name:'Северо-Восток', type:'Тяжёлая промышленность', icon:'🏭', pts:'380,30 470,50 560,40 580,120 520,150 440,130 400,120', lx:490, ly:92},
+  e:  {name:'Восток', type:'Технологии и порты', icon:'💻', pts:'440,130 520,150 580,120 560,200 520,260 450,230', lx:518, ly:195},
+  c:  {name:'Центр', type:'Столица и финансы', icon:'🏛', pts:'200,115 300,150 400,120 440,130 450,230 340,260 215,200', lx:330, ly:195},
+  s:  {name:'Юг', type:'Сельское хозяйство', icon:'🌾', pts:'215,200 340,260 450,230 520,260 480,330 380,370 280,350 190,320', lx:345, ly:318},
+  w:  {name:'Запад', type:'Добыча ресурсов', icon:'⛏', pts:'30,120 130,85 200,115 215,200 190,320 110,300 50,240', lx:120, ly:205}
+};
+const heatHue = t => 190 - clamp(t) * 1.9;
+function mapSVG(mode) {
+  const crisisId = S.event && S.event.region;
+  let g = '';
+  for (const [id, r] of Object.entries(REG)) {
+    const t = S.regions[id].t;
+    const crisis = mode === 'map' && (id === crisisId || t >= 70);
+    let style = '';
+    if (mode === 'heat') style = `style="fill:hsla(${heatHue(t)},70%,38%,.28)"`;
+    g += `<polygon class="region${crisis ? ' crisis' : ''}" points="${r.pts}" ${style}><title>${r.name}: напряжение ${Math.round(t)}%</title></polygon>`;
+  }
+  if (mode === 'heat') {
+    g += '<g filter="url(#blur)">';
+    for (const [id, r] of Object.entries(REG)) {
+      const t = S.regions[id].t;
+      g += `<circle cx="${r.lx}" cy="${r.ly}" r="${14 + t * .42}" fill="hsla(${heatHue(t)},90%,55%,${.25 + t / 160})"/>`;
+    }
+    g += '</g>';
+  }
+  for (const [id, r] of Object.entries(REG)) {
+    g += `<text class="ricon" x="${r.lx}" y="${r.ly}">${r.icon}</text><text class="rlabel" x="${r.lx}" y="${r.ly + 18}">${r.name}</text>`;
+  }
+  if (mode === 'map' && crisisId) {
+    const r = REG[crisisId];
+    g += `<g transform="translate(${r.lx - 62},${r.ly - 50})"><rect class="tag" width="124" height="20" rx="3"/><text class="tagt" x="9" y="14">▲ КРИЗИСНЫЙ РЕГИОН</text></g>`;
+  }
+  return `<svg viewBox="0 0 610 400" class="${mode === 'heat' ? 'heat' : ''}" role="img" aria-label="Карта страны по регионам"><defs><filter id="blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="14"/></filter></defs>${g}</svg>`;
+}
+
+/* ---------- Графики ---------- */
+function spark(arr, o = {}) {
+  const w = 220, h = o.h || 64, px = o.labels ? 38 : 6, py = 8;
+  const mn = Math.min(...arr), mx = Math.max(...arr), span = (mx - mn) || 1;
+  const X = i => 4 + (arr.length < 2 ? 0 : i * (w - px - 4) / (arr.length - 1));
+  const Y = v => h - py - (v - mn) / span * (h - 2 * py);
+  const pts = arr.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  const c = o.color || 'var(--cyan)', last = arr.length - 1;
+  const base = `<line x1="4" y1="${h - 2}" x2="${w - px}" y2="${h - 2}" stroke="var(--line-soft)"/>`;
+  const area = arr.length > 1 ? `<polygon points="${X(0)},${h - 2} ${pts} ${X(last)},${h - 2}" fill="${c}" opacity=".12"/>` : '';
+  const labs = o.labels ? `<text x="${w - px + 5}" y="${Y(mx) + 3}">${mx.toFixed(1)}</text><text x="${w - px + 5}" y="${Y(mn) + 3}">${mn.toFixed(1)}</text>` : '';
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" role="img" aria-label="${o.label || 'график'}">${base}${area}<polyline points="${pts}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/><circle cx="${X(last)}" cy="${Y(arr[last])}" r="3.5" fill="${c}" stroke="var(--panel)" stroke-width="2"/>${labs}</svg>`;
+}
+
+/* ---------- Состояние ---------- */
+let S = null, tab = 'map', introSeen = false;
+function newState() {
+  return {
+    turn: 1, budget: 125.4, loyalty: 52, happiness: 55, protest: 38, security: 60, ecology: 55,
+    inflation: 4.2, growth: 1.5, gdpLevel: 900, tax: 20,
+    spend: {social: 12, infra: 8, security: 7, ecology: 3},
+    groups: {work: 52, biz: 50, elite: 55, youth: 50},
+    regions: {n: {t: 35}, ne: {t: 45}, e: {t: 25}, c: {t: 30}, s: {t: 40}, w: {t: 38}},
+    mods: [], queue: [], echoes: [], used: {}, journal: [], decrees: {},
+    hist: {rev: [42.8], infl: [4.2], growth: [1.5], budget: [125.4]},
+    lastBalance: 0, event: null, report: null, over: null
+  };
+}
+const SPEND_MAX = {social: 25, infra: 20, security: 15, ecology: 10};
+const GROUPS = {work: 'Рабочие и профсоюзы', biz: 'Бизнес', elite: 'Элиты и чиновники', youth: 'Молодёжь'};
+const STAT = {budget: 'Бюджет', loyalty: 'Лояльность', happiness: 'Счастье', protest: 'Протест', security: 'Безопасность', ecology: 'Экология', inflation: 'Инфляция', growth: 'Рост ВВП'};
+const BAD_UP = {protest: 1, inflation: 1};
+const snap = () => ({budget: S.budget, growth: S.growth, inflation: S.inflation, loyalty: S.loyalty, happiness: S.happiness, protest: S.protest, ecology: S.ecology});
+
+function money() {
+  const sp = S.spend;
+  const rev = S.gdpLevel / 4 * S.tax / 100 * 0.95 * (1 + (S.loyalty - 50) / 400);
+  const interest = Math.max(0, -S.budget) * 0.03;
+  const exp = 8 + sp.social + sp.infra + sp.security + sp.ecology + interest;
+  const mb = S.mods.filter(m => m.stat === 'budget').reduce((a, m) => a + m.val, 0);
+  return {rev, exp, mb, bal: rev - exp + mb};
+}
+
+function applyEff(e, mods) {
+  e = e || {};
+  for (const k of ['loyalty', 'happiness', 'protest', 'security', 'ecology']) if (e[k]) S[k] = clamp(S[k] + e[k]);
+  if (e.budget) S.budget += e.budget;
+  if (e.inflation) S.inflation = Math.max(0, S.inflation + e.inflation);
+  if (e.growth) S.growth += e.growth;
+  if (e.tax) S.tax = clamp(S.tax + e.tax, 10, 40);
+  if (e.spend) for (const k in e.spend) S.spend[k] = clamp(S.spend[k] + e.spend[k], 0, SPEND_MAX[k]);
+  if (e.groups) for (const g in e.groups) S.groups[g] = clamp(S.groups[g] + e.groups[g]);
+  if (e.regions) for (const r in e.regions) {
+    if (r === 'all') Object.values(S.regions).forEach(x => x.t = clamp(x.t + e.regions[r]));
+    else S.regions[r].t = clamp(S.regions[r].t + e.regions[r]);
+  }
+  (mods || []).forEach(m => S.mods.push(Object.assign({label: STAT[m.stat === 'budget' ? 'budget' : m.stat]}, m)));
+}
+
+/* Один ход = один квартал */
+function tick() {
+  const s = S, sp = s.spend, tax = s.tax;
+  let mg = 0, mi = 0;
+  s.mods.forEach(m => { if (m.stat === 'growth') mg += m.val; if (m.stat === 'inflation') mi += m.val; });
+  const m = money();
+  s.budget += m.bal; s.lastBalance = m.bal;
+  const gT = 1.6 + (sp.infra - 8) * 0.12 - (tax - 20) * 0.14 - Math.max(0, s.inflation - 6) * 0.25
+    - Math.max(0, s.protest - 60) * 0.04 + (sp.social - 12) * 0.03 - (s.ecology < 30 ? 0.5 : 0) + mg;
+  s.growth += (gT - s.growth) * 0.45;
+  s.gdpLevel *= 1 + s.growth / 400;
+  const deficitPush = m.bal < 0 ? Math.min(2.5, -m.bal * 0.08) : 0;
+  const iT = 3.5 + deficitPush + Math.max(0, s.growth - 3) * 0.4 + mi;
+  s.inflation = Math.max(0, s.inflation + (iT - s.inflation) * 0.35);
+  s.happiness = clamp(s.happiness + (50 - s.happiness) * 0.05 + (sp.social - 12) * 0.25 + (sp.infra - 8) * 0.1
+    - (tax - 20) * 0.3 - Math.max(0, s.inflation - 5) * 1.0 + (s.growth - 1.5) * 0.8 + (sp.ecology - 3) * 0.1 + (s.ecology - 50) * 0.02);
+  s.protest = clamp(s.protest + (50 - s.happiness) * 0.1 + (s.inflation - 4.5) * 0.6 - (sp.security - 7) * 0.4
+    + (50 - s.security) * 0.03 - (s.protest - 40) * 0.05);
+  const g = s.groups;
+  g.biz = clamp(g.biz - (tax - 20) * 0.3 + (50 - g.biz) * 0.05);
+  g.work = clamp(g.work + (sp.social - 12) * 0.2 + (50 - g.work) * 0.05 - Math.max(0, s.inflation - 6) * 0.5);
+  g.youth = clamp(g.youth + (sp.infra - 8) * 0.1 + (s.growth - 1.5) * 0.3 - (s.inflation - 5) * 0.4 + (50 - g.youth) * 0.05);
+  g.elite = clamp(g.elite + (50 - g.elite) * 0.05);
+  const avg = (g.work + g.biz + g.elite + g.youth) / 4;
+  s.loyalty = clamp(s.loyalty + (avg - s.loyalty) * 0.15 + (s.happiness - 50) * 0.05 - (s.protest - 40) * 0.04);
+  s.security = clamp(s.security + (sp.security - 7) * 0.6 - (s.protest - 40) * 0.03 + (60 - s.security) * 0.03);
+  s.ecology = clamp(s.ecology + (sp.ecology - 3) * 0.7 - 0.5 * Math.max(0, s.growth) + 0.6);
+  Object.values(s.regions).forEach(r => {
+    r.t = clamp(r.t + (s.protest - 40) * 0.06 + (50 - s.happiness) * 0.03 + rnd(-1.2, 1.2) - (s.security - 60) * 0.02);
+  });
+  s.mods.forEach(x => x.turns--);
+  s.mods = s.mods.filter(x => x.turns > 0);
+  s.hist.rev.push(m.rev); s.hist.infl.push(s.inflation); s.hist.growth.push(s.growth); s.hist.budget.push(s.budget);
+}
+
+/* ---------- События ---------- */
+const EV = [
+{id:'energy', region:'ne', title:'Критический сбой энергосистемы (Северо-Восток)',
+ text:'На узловых подстанциях Северо-Восточного региона зафиксирован критический износ оборудования. Веерные отключения затронули 40% промышленных предприятий. Если не принять мер, начнётся массовая остановка производства и падение {{ВВП}}.',
+ opts:[
+ {title:'Субсидировать', d:'Оплатить ремонт сетей из {{бюджет|бюджета}} и держать {{тариф|тарифы}} прежними.',
+  eff:{budget:-40, loyalty:10, regions:{ne:-15}}, mods:[{stat:'growth', val:.5, turns:6, label:'Стабильная энергия'}],
+  delayed:[{after:6, title:'Субсидии закончились', text:'Деньги ушли на ремонт, но тарифы остались искусственно низкими, и у энергокомпаний нет средств на обновление. Износ накапливается снова.', eff:{budget:-8, regions:{ne:12}}}],
+  lesson:'{{субсидия|Субсидия}} быстро гасит проблему и поднимает лояльность, но не меняет причину: низкие {{тариф|тарифы}} не дают отрасли зарабатывать на ремонт. Через несколько ходов проблема вернётся.'},
+ {title:'Поднять тариф', d:'Перенести расходы на потребителей, чтобы энергокомпании сами обновили сети.',
+  eff:{budget:15, inflation:1.5, happiness:-4, loyalty:-6, regions:{ne:12}}, mods:[{stat:'growth', val:-.6, turns:4, label:'Дорогая энергия'}],
+  delayed:[{after:5, title:'Сети обновлены', text:'Выросшие тарифы окупили инвестиции: энергосистема стала надёжнее, предприятия вернулись к полной загрузке.', eff:{budget:10, regions:{ne:-12}, loyalty:3}, mods:[{stat:'growth', val:.4, turns:5, label:'Надёжная энергия'}]}],
+  lesson:'Рост {{тариф|тарифа}} дорого стоит сегодня: растёт {{инфляция|инфляция}}, падает недовольство. Зато сети получают деньги на модернизацию, и выгода приходит позже.'},
+ {title:'Ждать обновлений', d:'Не вмешиваться и надеяться, что энергетики справятся сами.',
+  eff:{loyalty:-10, regions:{ne:20}}, mods:[{stat:'growth', val:-.9, turns:5, label:'Веерные отключения'}],
+  delayed:[{after:3, title:'Авария на подстанции', text:'Износ привёл к крупной аварии: часть региона осталась без света на несколько дней. Ущерб и недовольство выше, чем стоил бы ремонт.', eff:{budget:-25, loyalty:-5, happiness:-4, regions:{ne:15}}}],
+  lesson:'Бездействие тоже решение. Накопленные проблемы инфраструктуры обычно обходятся дороже, чем своевременный ремонт.'}]},
+
+{id:'inflation', region:'c', title:'Цены растут быстрее зарплат', when:s=>s.turn>2, w:s=>s.inflation>6?5:.7,
+ text:'{{инфляция|Инфляция}} ускоряется. Продукты и услуги дорожают каждый месяц, люди жалуются на пустые кошельки. Центральный банк и правительство ждут вашего решения.',
+ opts:[
+ {title:'Повысить ставку', d:'Поднять {{ключевая ставка|ключевую ставку}}, чтобы кредиты подорожали, а спрос остыл.',
+  eff:{inflation:-1.2, happiness:-2, groups:{biz:-4}}, mods:[{stat:'growth', val:-.4, turns:3, label:'Дорогие кредиты'}],
+  delayed:[{after:4, title:'Кредиты остаются дорогими', text:'Дорогие займы затормозили стройку и инвестиции бизнеса. Зато цены стабилизировались.', eff:{inflation:-.4}, mods:[{stat:'growth', val:-.3, turns:3, label:'Слабые инвестиции'}]}],
+  lesson:'Высокая {{ключевая ставка}} охлаждает спрос и снижает {{инфляция|инфляцию}}, но тормозит {{рост ВВП|рост экономики}}. Это классический обмен: стабильные цены против скорости роста.'},
+ {title:'Напечатать деньги', d:'Закрыть дыры в казне {{эмиссия|эмиссией}} и раздать выплаты.',
+  eff:{budget:25, inflation:2, happiness:2},
+  delayed:[{after:3, title:'Инфляция разогналась', text:'Денег стало больше, чем товаров. Цены вышли из-под контроля, зарплаты не успевают за ними.', eff:{inflation:1.5, happiness:-4, protest:5}}],
+  lesson:'{{эмиссия|Эмиссия}} даёт деньги сразу, но платит за них весь народ через рост цен. Эффект проявляется с задержкой, поэтому этот шаг кажется выгодным.'},
+ {title:'Заморозить цены', d:'Ввести {{ценовой контроль}} на продукты и топливо.',
+  eff:{inflation:-1, happiness:3, groups:{biz:-3}},
+  delayed:[{after:4, title:'Товары исчезают с полок', text:'Производить по замороженным ценам невыгодно, и магазины остались без части товаров. Появился чёрный рынок.', eff:{protest:6, groups:{biz:-6}}, mods:[{stat:'growth', val:-.6, turns:4, label:'Дефицит товаров'}]}],
+  lesson:'{{ценовой контроль|Заморозка цен}} прячет симптом, а не лечит причину. Через время возникает дефицит: пример непреднамеренных последствий.'}]},
+
+{id:'oil', region:'w', title:'Ресурсный бум на Западе', when:s=>s.turn>2,
+ text:'Мировые цены на сырьё резко выросли, и казна получает неожиданный доход. Как распорядиться деньгами?',
+ opts:[
+ {title:'Раздать населению', d:'Увеличить выплаты и зарплаты бюджетникам.',
+  eff:{budget:-15, happiness:8, loyalty:6},
+  delayed:[{after:5, title:'Спрос обогнал предложение', text:'Выплаты увеличили спрос, а товаров больше не стало. Цены поползли вверх.', eff:{inflation:1.2, happiness:-2}}],
+  lesson:'Раздача денег повышает {{лояльность}} сразу, но без роста производства деньги превращаются в {{инфляция|инфляцию}}.'},
+ {title:'В резервный фонд', d:'Отложить доход на случай кризиса.',
+  eff:{budget:30, loyalty:-2},
+  delayed:[{after:6, title:'Фонд выручил', text:'Когда цены на сырьё упали, накопления помогли закрыть дыру без новых налогов и долгов.', eff:{budget:10, loyalty:3}}],
+  lesson:'{{резервный фонд|Резервный фонд}} не даёт эффекта сегодня, но защищает страну, когда доходы падают. Это инвестиция в устойчивость.'},
+ {title:'Вложить в добычу', d:'Расширить добычу, пока цены высоки.',
+  eff:{budget:-10, ecology:-6, regions:{w:6}}, mods:[{stat:'growth', val:.5, turns:6, label:'Ресурсный подъём'}],
+  delayed:[{after:7, title:'Голландская болезнь', text:'Экономика слишком завязалась на сырьё. Когда цены снизились, другие отрасли оказались слабыми, а рост замедлился.', eff:{loyalty:-3, regions:{w:10}}, mods:[{stat:'growth', val:-.5, turns:5, label:'Зависимость от сырья'}]}],
+  lesson:'Ставка на одну отрасль даёт быстрый рост, но создаёт риск: {{голландская болезнь}} делает экономику уязвимой для падения цен.'}]},
+
+{id:'drought', region:'s', title:'Засуха на Юге',
+ text:'Урожай зерна упал почти вдвое. Фермеры требуют помощи, а цены на хлеб уже растут.',
+ opts:[
+ {title:'Субсидии фермерам', d:'Выплатить компенсации аграриям из бюджета.',
+  eff:{budget:-18, loyalty:5, regions:{s:-12}},
+  delayed:[{after:5, title:'Фермеры ждут новых выплат', text:'Аграрии привыкли к помощи и просят её каждый год. Расходы на поддержку закрепились.', eff:{budget:-5}, mods:[{stat:'budget', val:-2, turns:4, label:'Поддержка агросектора'}]}],
+  lesson:'Постоянные {{субсидия|субсидии}} превращаются из помощи в обязательство, которое трудно отменить.'},
+ {title:'Закупить зерно', d:'Купить недостающее зерно за рубежом.',
+  eff:{budget:-12, happiness:2, inflation:.3},
+  delayed:[{after:5, title:'Зависимость от импорта', text:'Часть фермеров свернула посевы, потому что импортное зерно дешевле. Страна стала зависеть от внешних поставок.', eff:{budget:-6, regions:{s:6}}}],
+  lesson:'Импорт быстро закрывает дефицит, но ослабляет собственное производство и делает страну зависимой.'},
+ {title:'Не вмешиваться', d:'Рынок сам перераспределит зерно.',
+  eff:{inflation:1, happiness:-5, protest:6, regions:{s:18}},
+  lesson:'Без вмешательства бюджет цел, но продовольственная {{инфляция}} бьёт по самым бедным, и растёт социальная напряжённость.'}]},
+
+{id:'tech', region:'e', title:'Технопарк на Востоке', when:s=>s.turn>2,
+ text:'Группа инвесторов предлагает создать технопарк в портовом городе. Проекту нужна поддержка государства.',
+ opts:[
+ {title:'Инвестировать', d:'Построить инфраструктуру технопарка за счёт казны.',
+  eff:{budget:-25, groups:{youth:8}}, mods:[{stat:'growth', val:.3, turns:6, label:'Стройка технопарка'}],
+  delayed:[{after:6, title:'Технопарк заработал', text:'Появились рабочие места для специалистов и налоговые поступления от новых компаний.', eff:{budget:15, regions:{e:-6}}, mods:[{stat:'growth', val:.4, turns:6, label:'Технологический рост'}]}],
+  lesson:'Государственные инвестиции в инфраструктуру окупаются с лагом: сначала расходы, потом налоги и рост. Это работает как {{мультипликатор}}.'},
+ {title:'Налоговые льготы', d:'Снизить налоги для IT-компаний на несколько лет.',
+  eff:{groups:{biz:6}}, mods:[{stat:'budget', val:-4, turns:6, label:'Льготы IT'}, {stat:'growth', val:.4, turns:8, label:'Приток IT-бизнеса'}],
+  delayed:[{after:8, title:'Бизнес пришёл надолго', text:'Компании выросли, нанимают сотрудников и платят налоги по обычной ставке.', eff:{budget:20}}],
+  lesson:'Льготы уменьшают {{налоговая ставка|налоговую ставку}} для одних и теряют доход казны сегодня, зато привлекают бизнес на годы вперёд.'},
+ {title:'Отказаться', d:'Приоритет у других задач.',
+  eff:{groups:{youth:-6}},
+  delayed:[{after:5, title:'Утечка мозгов', text:'Перспективные программисты и инженеры уезжают туда, где есть современные площадки.', eff:{}, mods:[{stat:'growth', val:-.3, turns:6, label:'Утечка мозгов'}]}],
+  lesson:'Отказ экономит деньги, но страна теряет молодых специалистов: {{утечка мозгов}} ощутима через годы.'}]},
+
+{id:'strike', region:'n', title:'Забастовка на промышленных предприятиях', w:s=>s.protest>48?4:.8,
+ text:'Рабочие требуют повышения зарплат и остановили несколько заводов. Профсоюзы готовы присоединиться.',
+ opts:[
+ {title:'Поднять МРОТ', d:'Повысить минимальную зарплату по всей стране.',
+  eff:{budget:-10, happiness:5, groups:{work:10, biz:-6}},
+  delayed:[{after:4, title:'Рост зарплат подстегнул цены', text:'Бизнес переложил возросшие расходы на потребителей, и инфляция снова ускорилась.', eff:{inflation:.8}}],
+  lesson:'Рост {{МРОТ}} улучшает жизнь работников, но повышает издержки бизнеса, и часть эффекта съедает {{инфляция|инфляция}}.'},
+ {title:'Разогнать силой', d:'Подавить забастовку с помощью силовых структур.',
+  eff:{security:8, loyalty:-8, protest:-6},
+  delayed:[{after:4, title:'Радикализация', text:'Подавленный протест не исчез, он стал жёстче и организованнее.', eff:{protest:14, regions:{all:8}}}],
+  lesson:'Силовое подавление снижает протест на короткий срок, но разрушает {{лояльность}} и порождает более жёсткие выступления.'},
+ {title:'Переговоры', d:'Собрать представителей рабочих и бизнеса за одним столом.',
+  eff:{budget:-4, protest:-4, groups:{work:4, biz:-2}},
+  lesson:'Компромисс дешёвый и надёжный. Он не делает довольными всех, но не оставляет скрытых долгов.'}]},
+
+{id:'eco', region:'c', title:'Авария на химическом комбинате', w:s=>s.ecology<45?3:1,
+ text:'Из-за аварии в реку попали вредные вещества. Жители пригородов жалуются, СМИ уже снимают репортажи.',
+ opts:[
+ {title:'Штраф и очистка', d:'Заставить владельцев заплатить и очистить реку.',
+  eff:{budget:-10, ecology:6, loyalty:3, groups:{biz:-4}},
+  lesson:'Принцип «загрязнитель платит» защищает экологию, но делает бизнес осторожнее и портит отношения с собственниками.'},
+ {title:'Замолчать', d:'Не раздувать историю и сохранить спокойствие.',
+  eff:{ecology:-6},
+  delayed:[{after:5, title:'Утечка информации', text:'Журналисты опубликовали документы о сокрытии аварии. Доверие к власти упало.', eff:{loyalty:-12, protest:8}}],
+  lesson:'Скрытые проблемы редко остаются скрытыми. Сокрытие превращает локальную аварию в политический кризис.'},
+ {title:'Экологический налог', d:'Ввести налог на вредные выбросы для всей отрасли.',
+  eff:{budget:12, ecology:4, happiness:-1, groups:{biz:-6}}, mods:[{stat:'growth', val:-.3, turns:4, label:'Затраты на очистку'}],
+  lesson:'Налог на выбросы одновременно пополняет казну и толкает промышленность к чистым технологиям, но повышает издержки.'}]},
+
+{id:'bank', region:'c', title:'Банковский кризис', when:s=>s.turn>4,
+ text:'Крупный банк объявил о проблемах с {{ликвидность|ликвидностью}}. Вкладчики выстраиваются в очереди у банкоматов.',
+ opts:[
+ {title:'Спасти банки', d:'Выделить деньги из бюджета на поддержку банка.',
+  eff:{budget:-35, loyalty:-4},
+  delayed:[{after:5, title:'Банки снова рискуют', text:'Зная, что государство спасёт их, банки выдают всё более рискованные кредиты.', eff:{budget:-10}}],
+  lesson:'Спасение банков останавливает панику, но создаёт {{моральный риск}}: рисковать выгодно, потому что убытки оплатит бюджет.'},
+ {title:'Дать обанкротиться', d:'Позволить рынку самому очистить систему.',
+  eff:{protest:8, happiness:-5, groups:{biz:-8}}, mods:[{stat:'growth', val:-1, turns:4, label:'Банковский шок'}],
+  delayed:[{after:6, title:'Здоровая система', text:'Слабые банки ушли, оставшиеся стали осторожнее. Кредитование восстановилось.', eff:{}, mods:[{stat:'growth', val:.4, turns:6, label:'Оздоровление банков'}]}],
+  lesson:'Банкротство болезненно в моменте, но убирает слабые звенья и восстанавливает рыночную дисциплину.'},
+ {title:'Защитить вкладчиков', d:'Гарантировать вклады людей, но не банка.',
+  eff:{budget:-15, happiness:-1}, mods:[{stat:'growth', val:-.4, turns:3, label:'Осторожность банков'}],
+  lesson:'Точечная помощь людям обходится дешевле спасения банка и сохраняет доверие к системе.'}]},
+
+{id:'pension', region:'all', title:'Дефицит пенсионной системы', when:s=>s.turn>3,
+ text:'Выплаты пенсий растут быстрее взносов. Эксперты предлагают срочные меры.',
+ opts:[
+ {title:'Поднять возраст', d:'Постепенно увеличить {{пенсионный возраст}}.',
+  eff:{loyalty:-12, protest:10, regions:{all:8}}, mods:[{stat:'budget', val:3, turns:8, label:'Экономия на пенсиях'}],
+  lesson:'Реформа возраста решает долгосрочный дефицит, но политически дорогая: люди воспринимают её как потерю.'},
+ {title:'Индексировать выплаты', d:'Повышать пенсии вслед за ценами ({{индексация}}).',
+  eff:{budget:-12, happiness:4, loyalty:4},
+  delayed:[{after:6, title:'Дефицит стал глубже', text:'Нагрузка на пенсионную систему выросла, а доходов от взносов не прибавилось.', eff:{}, mods:[{stat:'budget', val:-3, turns:6, label:'Пенсионный дефицит'}]}],
+  lesson:'{{индексация|Индексация}} защищает пенсионеров от роста цен, но увеличивает расходы бюджета на годы вперёд.'},
+ {title:'Ничего не менять', d:'Отложить вопрос.',
+  delayed:[{after:4, title:'Дефицит растёт', text:'Проблема никуда не делась: теперь закрывать дыру приходится из бюджета.', eff:{budget:-15}}],
+  eff:{}, lesson:'Отложенное решение копит проценты: дефицит растёт, а выбор становится жёстче.'}]},
+
+{id:'sanctions', region:'e', title:'Новые санкции против страны', when:s=>s.turn>3,
+ text:'Несколько торговых партнёров ввели ограничения на закупки вашей продукции и поставки технологий. Нужно выбрать стратегию.',
+ opts:[
+ {title:'Импортозамещение', d:'Вкладывать в собственное производство.',
+  eff:{budget:-20}, mods:[{stat:'growth', val:-.2, turns:3, label:'Перестройка производства'}],
+  delayed:[{after:6, title:'Появились свои производства', text:'Местные заводы заняли ниши ушедших поставщиков и снизили зависимость от импорта.', eff:{inflation:-.3}, mods:[{stat:'growth', val:.5, turns:6, label:'Своё производство'}]}],
+  lesson:'{{импортозамещение|Импортозамещение}} дорого и медленно, но создаёт собственные отрасли и снижает риск новых {{санкции|санкций}}.'},
+ {title:'Искать новые рынки', d:'Переориентировать торговлю на других партнёров.',
+  eff:{budget:-8, groups:{biz:3}, regions:{e:-6}}, mods:[{stat:'growth', val:.1, turns:4, label:'Новые партнёры'}],
+  lesson:'Диверсификация рынков снижает зависимость от одного партнёра и дешевле, чем полное замещение.'},
+ {title:'Пойти на уступки', d:'Согласиться на требования ради снятия {{санкции|санкций}}.',
+  eff:{budget:10, loyalty:-8, security:-4},
+  delayed:[{after:5, title:'Появились новые требования', text:'Партнёры увидели слабость и выдвинули следующие условия.', eff:{budget:-10, loyalty:-4}}],
+  lesson:'Уступки дают быстрое облегчение, но поощряют давление и обходятся репутацией.'}]},
+
+{id:'corruption', region:'c', title:'Коррупционный скандал в элитах',
+ text:'Журналисты опубликовали расследование о хищениях в крупном ведомстве. Ваши чиновники ждут сигнала.',
+ opts:[
+ {title:'Провести расследование', d:'Назначить независимую проверку.',
+  eff:{budget:-2, loyalty:5, groups:{elite:-12}},
+  delayed:[{after:5, title:'Чиновники саботируют', text:'Часть аппарата замедлила работу из-за страха попасть под проверку.', eff:{}, mods:[{stat:'growth', val:-.2, turns:3, label:'Саботаж аппарата'}]}],
+  lesson:'Честное расследование укрепляет доверие граждан, но настраивает против вас часть элит.'},
+ {title:'Замять', d:'Оставить всё как есть.',
+  eff:{loyalty:-4, groups:{elite:6}},
+  delayed:[{after:5, title:'Скандал всплыл', text:'Вторая волна публикаций показала, что власти знали и молчали.', eff:{loyalty:-10, protest:6}}],
+  lesson:'Сокрытие покупает лояльность элит дорогой ценой: общество не прощает, когда скрытое выходит наружу.'},
+ {title:'Показательный процесс', d:'Наказать одного-двух виновных публично.',
+  eff:{loyalty:7, groups:{elite:-6}},
+  delayed:[{after:6, title:'Инвесторы насторожились', text:'Бизнес испугался непредсказуемых репрессий и придержал вложения.', eff:{}, mods:[{stat:'growth', val:-.3, turns:4, label:'Осторожность инвесторов'}]}],
+  lesson:'Показательные меры быстро поднимают рейтинг, но не меняют систему и пугают бизнес.'}]},
+
+{id:'auto', region:'ne', title:'Автоматизация заводов', when:s=>s.turn>3,
+ text:'Крупные заводы Северо-Востока внедряют роботов. Производительность растёт, но тысячи рабочих теряют места. Растёт {{безработица}}.',
+ opts:[
+ {title:'Программа переобучения', d:'Оплатить курсы новых профессий.',
+  eff:{budget:-14, happiness:2},
+  delayed:[{after:6, title:'Кадры нашли работу', text:'Переобученные рабочие заняли места в новых отраслях.', eff:{regions:{ne:-8}}, mods:[{stat:'growth', val:.4, turns:6, label:'Новые профессии'}]}],
+  lesson:'Переобучение стоит денег сейчас, зато рабочие остаются в экономике, а не в очереди за пособием.'},
+ {title:'Пособия', d:'Увеличить выплаты безработным.',
+  eff:{budget:-10, happiness:3},
+  delayed:[{after:5, title:'Выплаты закрепились', text:'Многие остались на пособии надолго, поток расходов не сокращается.', eff:{}, mods:[{stat:'budget', val:-2, turns:5, label:'Пособия по безработице'}]}],
+  lesson:'Пособия смягчают удар, но без стимулов вернуться к работе превращаются в постоянные расходы.'},
+ {title:'Не вмешиваться', d:'Рынок сам создаст новые рабочие места.',
+  eff:{protest:6, happiness:-4, regions:{ne:15}},
+  lesson:'Структурная {{безработица}} не рассасывается сама: людям нужны навыки, а не только время.'}]},
+
+{id:'cyber', region:'c', title:'Кибератака на госсистемы',
+ text:'Неизвестные хакеры нарушили работу сервисов налоговой и социальных выплат. Часть данных утекла.',
+ opts:[
+ {title:'Усилить защиту', d:'Выделить средства на кибербезопасность.',
+  eff:{budget:-12, security:6},
+  delayed:[{after:8, title:'Атаки отражены', text:'Новая система отразила серию взломов, о которой общество даже не узнало.', eff:{loyalty:3}}],
+  lesson:'Защита дорогая и незаметная, пока всё работает. Её ценность видна только по несостоявшимся авариям.'},
+ {title:'Найти виновных', d:'Подключить силовиков к расследованию.',
+  eff:{budget:-4, security:2},
+  lesson:'Расследование сдерживает следующие атаки слабо: без защиты система остаётся уязвимой.'},
+ {title:'Не реагировать', d:'Сделать вид, что всё под контролем.',
+  delayed:[{after:3, title:'Масштабная утечка данных', text:'Личные данные миллионов граждан оказались в открытом доступе.', eff:{security:-8, loyalty:-6, budget:-8}}],
+  eff:{}, lesson:'Игнорирование угроз кажется бесплатным, пока угроза не реализуется.'}]},
+
+{id:'debt', region:'c', title:'Казна пустеет', when:s=>s.budget<70, w:s=>s.budget<45?6:2,
+ text:'Запас в {{бюджет|бюджете}} тает, а {{дефицит}} продолжается. Нужны деньги на текущие расходы.',
+ opts:[
+ {title:'Выпустить облигации', d:'Занять на рынке под проценты.',
+  eff:{budget:40}, mods:[{stat:'budget', val:-4, turns:8, label:'Обслуживание долга'}],
+  lesson:'{{облигации|Облигации}} дают деньги сразу, но создают {{долг}}: проценты ежеквартально съедают часть бюджета.'},
+ {title:'Поднять налоги', d:'Увеличить {{налоговая ставка|налоговую ставку}} на 3 п.п.',
+  eff:{tax:3, happiness:-3, groups:{biz:-5}},
+  lesson:'Налоги увеличивают доходы казны, но уменьшают деловую активность. Эффект видно уже в следующих кварталах.'},
+ {title:'Сократить расходы', d:'Урезать социальные расходы и инфраструктуру.',
+  eff:{spend:{social:-2, infra:-1}, happiness:-2, groups:{work:-4}},
+  lesson:'Экономия оздоровляет бюджет, но бьёт по качеству жизни и по росту, который зависит от инфраструктуры.'}]},
+
+{id:'games', region:'e', title:'Предложение провести мировой форум', when:s=>s.turn>4,
+ text:'Страна может принять крупнейший международный форум. Это престиж и поток гостей, но стройки обойдутся недёшево.',
+ opts:[
+ {title:'Провести в полном формате', d:'Построить арены и инфраструктуру.',
+  eff:{budget:-30, loyalty:10, happiness:6},
+  delayed:[{after:6, title:'Остались «белые слоны»', text:'Арены простаивают, а содержание обходится в десятки миллионов ежегодно.', eff:{}, mods:[{stat:'budget', val:-2, turns:6, label:'Содержание арен'}]}],
+  lesson:'Престижные проекты поднимают рейтинг, но их эксплуатация часто становится скрытым обязательством.'},
+ {title:'Отказаться', d:'Деньги нужнее на других задачах.',
+  eff:{loyalty:-2},
+  lesson:'Отказ сохраняет бюджет и не даёт всплеска популярности.'},
+ {title:'Скромный формат', d:'Использовать существующие площадки.',
+  eff:{budget:-10, loyalty:4},
+  lesson:'Умеренный вариант сохраняет часть престижа без тяжёлых долгов.'}]},
+
+{id:'edu', region:'c', title:'Реформа образования', when:s=>s.turn>3,
+ text:'Школы и вузы жалуются на нехватку денег. Работодатели недовольны уровнем выпускников.',
+ opts:[
+ {title:'Увеличить финансирование', d:'Вложить в зарплаты учителей и оборудование.',
+  eff:{budget:-15, groups:{youth:8}},
+  delayed:[{after:8, title:'Квалифицированные кадры', text:'Выпускники стали сильнее, бизнес охотнее нанимает местных специалистов.', eff:{}, mods:[{stat:'growth', val:.5, turns:8, label:'Сильные кадры'}]}],
+  lesson:'Образование окупается дольше любой другой инвестиции, но эффект самый устойчивый.'},
+ {title:'Сократить расходы', d:'Оптимизировать сеть школ и вузов.',
+  eff:{budget:8, groups:{youth:-8}},
+  delayed:[{after:6, title:'Дефицит кадров', text:'Работодатели жалуются на нехватку специалистов, рост замедляется.', eff:{}, mods:[{stat:'growth', val:-.4, turns:6, label:'Дефицит кадров'}]}],
+  lesson:'Экономия на образовании даёт деньги сегодня и отнимает рост завтра.'},
+ {title:'Ввести платное обучение', d:'Переложить часть затрат на студентов.',
+  eff:{budget:4, happiness:-3, groups:{youth:-4}},
+  lesson:'Платное обучение разгружает бюджет, но увеличивает неравенство и недовольство молодёжи.'}]}
+];
+const EV_BY = Object.fromEntries(EV.map(e => [e.id, e]));
+
+function pickEvent() {
+  if (S.turn === 1) return EV_BY.energy;
+  if (S.turn === 2) return EV_BY.inflation;
+  let pool = EV.filter(e => !(S.used[e.id] && S.turn - S.used[e.id] < 10) && (!e.when || e.when(S)));
+  if (!pool.length) pool = EV.filter(e => !e.when || e.when(S));
+  const ws = pool.map(e => e.w ? e.w(S) : 1), sum = ws.reduce((a, b) => a + b, 0);
+  let r = Math.random() * sum;
+  for (let i = 0; i < pool.length; i++) { r -= ws[i]; if (r <= 0) return pool[i]; }
+  return pool[0];
+}
+
+/* ---------- Ход игры ---------- */
+function startGame() {
+  S = newState(); tab = 'map';
+  startTurn();
+  if (!introSeen) { introSeen = true; showIntro(); }
+}
+function startTurn() {
+  S.echoes = [];
+  const due = S.queue.filter(q => q.turn <= S.turn);
+  S.queue = S.queue.filter(q => q.turn > S.turn);
+  due.forEach(q => {
+    applyEff(q.eff, q.mods);
+    S.echoes.push(q);
+    S.journal.push({turn: S.turn, kind: 'echo', title: q.title});
+  });
+  if (checkOver()) { render(); return; }
+  S.event = pickEvent();
+  S.used[S.event.id] = S.turn;
+  render();
+}
+function choose(i) {
+  const ev = S.event, o = ev.opts[i], before = snap();
+  applyEff(o.eff, o.mods);
+  (o.delayed || []).forEach(d => S.queue.push(Object.assign({}, d, {turn: S.turn + d.after, from: ev.title})));
+  S.journal.push({turn: S.turn, kind: 'choice', title: ev.title, choice: o.title});
+  tick();
+  S.report = {ev, o, before, after: snap()};
+  S.event = null;
+  render();
+  if (!checkOver()) showReport(); else render();
+}
+function nextTurn() {
+  closeModal(); S.report = null;
+  if (S.turn >= MAX_TURN) { S.over = {title: 'Срок полномочий окончен', text: 'Вы довели страну до конца пятилетнего срока.', win: true}; render(); showEnd(); return; }
+  S.turn++; startTurn();
+  if (S.over) showEnd();
+}
+function checkOver() {
+  if (S.over) return true;
+  if (S.loyalty <= 12) S.over = {title: 'Смена власти', text: 'Поддержка упала так низко, что элиты и граждане отвернулись от вас. Вас отстранили.'};
+  else if (S.budget <= -80) S.over = {title: 'Дефолт', text: 'Долги выросли настолько, что страна не может обслуживать их. Кредиторы требуют отставки правительства.'};
+  else if (S.protest >= 92) S.over = {title: 'Массовые беспорядки', text: 'Протесты вышли из-под контроля, силовики потеряли управление улицами.'};
+  return !!S.over;
+}
+function score() {
+  const gdp = clamp((S.gdpLevel / 900 - 1) * 200 + 50), bud = clamp(50 + S.budget / 3), inf = clamp(100 - (S.inflation - 2) * 12);
+  return Math.round(0.2 * S.loyalty + 0.2 * S.happiness + 0.2 * gdp + 0.15 * bud + 0.15 * inf + 0.1 * S.ecology);
+}
+function useDecree(id) {
+  const d = DECREES[id];
+  if (S.report || S.over || (S.decrees[id] && S.turn - S.decrees[id] < d.cd)) return;
+  applyEff(d.eff, d.mods);
+  (d.delayed || []).forEach(x => S.queue.push(Object.assign({}, x, {turn: S.turn + x.after, from: d.title})));
+  S.decrees[id] = S.turn;
+  S.journal.push({turn: S.turn, kind: 'decree', title: d.title});
+  render();
+}
+const DECREES = {
+  amnesty: {title: 'Амнистия капиталов', d: 'Вернуть деньги из-за рубежа без вопросов о происхождении.', cd: 6, eff: {budget: 12, groups: {biz: 6, work: -6, elite: 3}}},
+  anticorr: {title: 'Антикоррупционная кампания', d: 'Проверки в ведомствах и показательные отставки.', cd: 6, eff: {budget: -4, groups: {elite: -10}, loyalty: 5, happiness: 3}},
+  media: {title: 'Информационная кампания', d: 'Объяснить гражданам смысл текущих решений.', cd: 4, eff: {budget: -3, loyalty: 4, protest: -2},
+    delayed: [{after: 5, title: 'Эффект кампании выдохся', text: 'Люди привыкли к посланиям, и прирост доверия исчез.', eff: {loyalty: -3}}]}
+};
+
+/* ---------- Отрисовка ---------- */
+const TABS = [
+  ['map', 'Карта', '<circle cx="22" cy="22" r="16"/><path d="M6 22h32M22 6c8 8 8 24 0 32M22 6c-8 8-8 24 0 32"/>'],
+  ['eco', 'Экономика', '<path d="M6 38V8M6 38h32M10 30l8-8 6 5 12-14M30 13h6v6"/>'],
+  ['soc', 'Общество', '<circle cx="22" cy="14" r="6"/><circle cx="9" cy="19" r="4"/><circle cx="35" cy="19" r="4"/><path d="M10 36c0-7 5-11 12-11s12 4 12 11zM1 33c0-4 3-7 7-7M43 33c0-4-3-7-7-7"/>'],
+  ['pol', 'Политика', '<circle cx="22" cy="10" r="5"/><path d="M12 22h20l-2 18H14zM22 26l2 4 4 .6-3 3 .7 4.2L22 35.7 18.300 37.800 19 33.600l-3-3 4-.6z"/>']
+];
+const dateLabel = () => `${Math.floor((S.turn - 1) / 4) + 1} год, ${(S.turn - 1) % 4 + 1} кв.`;
+const lvl = (v, hi = 60, lo = 40) => v >= hi ? 'good' : v >= lo ? 'warn' : 'bad';
+const tLabel = t => t < 40 ? ['СТАБИЛЬНО', 'good'] : t < 60 ? ['УМЕРЕННОЕ НАПРЯЖЕНИЕ', 'warn'] : ['▲ ВЫСОКИЙ РИСК', 'bad'];
+
+function chipsFor(o) {
+  const out = [];
+  const unit = {budget: ' млрд $', inflation: ' п.п.', growth: ' п.п.'};
+  for (const k of ['budget', 'loyalty', 'happiness', 'protest', 'security', 'ecology', 'inflation']) {
+    const v = o.eff && o.eff[k];
+    if (v) { const good = BAD_UP[k] ? v < 0 : v > 0; out.push(`<div class="chip ${good ? 'g' : 'b'}">${STAT[k]}: ${sg(v, k === 'inflation' ? 1 : 0)}${unit[k] || '%'}</div>`); }
+  }
+  if (o.eff && o.eff.tax) out.push(`<div class="chip b">Налоговая ставка: ${sg(o.eff.tax, 0)} п.п.</div>`);
+  if (o.eff && o.eff.spend) out.push('<div class="chip b">Расходы: сокращение</div>');
+  (o.mods || []).forEach(m => {
+    const good = m.stat === 'inflation' ? m.val < 0 : m.val > 0;
+    out.push(`<div class="chip ${good ? 'g' : 'b'}">Эффект «${m.label}» (${m.turns} ход.)</div>`);
+  });
+  if ((o.delayed || []).length) out.push('<div class="chip later">Есть отложенные последствия</div>');
+  return out.join('');
+}
+
+function renderNav() {
+  $('#nav').innerHTML = TABS.map(([id, name, svg]) =>
+    `<button data-act="tab" data-id="${id}" ${tab === id ? 'aria-current="true"' : ''}><svg viewBox="0 0 44 44" aria-hidden="true">${svg}</svg><span>${name}</span>${id === 'map' && S.event && tab !== 'map' ? '<span class="badge">!</span>' : ''}</button>`).join('');
+}
+function renderRight() {
+  const g = S.growth, gl = g < 0 ? ['КРИТИЧЕСКОЕ ПАДЕНИЕ', 'bad'] : g < 1 ? ['СТАГНАЦИЯ', 'warn'] : g < 3 ? ['РОСТ', 'good'] : ['БЫСТРЫЙ РОСТ', 'good'];
+  const arrow = S.lastBalance < 0 ? '↘' : S.lastBalance > 0 ? '↗' : '';
+  $('#right').innerHTML = `
+    <div class="brandr" style="font:700 15px var(--f-head)">Вектор власти</div>
+    <div class="stat"><div class="k">${fmtTerm('бюджет', 'Бюджет')}:</div><div class="v ${S.budget < 0 ? 'bad' : S.budget < 40 ? 'warn' : 'good'}">${S.budget.toFixed(1)} млрд $ <span class="${S.lastBalance < 0 ? 'bad' : 'good'}">${arrow}</span></div></div>
+    <div class="stat"><div class="k">${fmtTerm('лояльность', 'Лояльность')}:</div><div class="v ${lvl(S.loyalty, 60, 40) === 'good' ? 'good' : lvl(S.loyalty, 60, 40) === 'warn' ? 'warn' : 'bad'}">${Math.round(S.loyalty)}%</div></div>
+    <div class="stat"><div class="k">${fmtTerm('ВВП', 'ВВП')}:</div><div class="v ${gl[1]}">${sg(g)}%</div><div class="s ${gl[1]}">${gl[0]}</div></div>
+    <div class="stat"><div class="k">Доходы казны</div>${spark(S.hist.rev, {color: 'var(--good)', label: 'Доходы казны по ходам'})}</div>
+    <div class="stat"><div class="k">${fmtTerm('инфляция', 'Инфляция')}: ${S.inflation.toFixed(1)}%</div>${spark(S.hist.infl, {color: '#ffffff', label: 'Инфляция по ходам'})}</div>`;
+}
+const fmtTerm = (k, t) => `<span class="term" tabindex="0" data-term="${k}">${t}</span>`;
+
+function eventPanel() {
+  const ev = S.event;
+  let h = '';
+  if (S.echoes.length) {
+    h += '<div class="echo"><h4>Последствия прошлых решений</h4>' + S.echoes.map(q => `<p><b>${q.title}.</b> ${fmt(q.text)}</p>`).join('') + '</div>';
+  }
+  if (ev) {
+    h += `<section class="event" aria-live="polite"><h2><span class="alert">▲</span>${ev.title}</h2><p>${fmt(ev.text)}</p>
+      <div class="opts">${ev.opts.map((o, i) => `<button class="opt" data-act="choose" data-i="${i}"><h3>${o.title}</h3><span class="d">${fmt(o.d)}</span><div class="chips">${chipsFor(o)}</div></button>`).join('')}</div>
+      ${S.turn <= 2 ? '<p class="hint" style="margin-top:10px">Подсказка: наведите курсор на подчёркнутые слова, чтобы узнать, что они значат. Справа видно, как меняется страна.</p>' : ''}</section>`;
+  }
+  return h;
+}
+function pendingBanner() {
+  return S.event ? `<div class="echo"><p>Ждёт решения: <b>${S.event.title}</b></p><div><button class="primary" data-act="tab" data-id="map">К карте</button></div></div>` : '';
+}
+
+function viewMap() {
+  return `<div class="mapbox">${mapSVG('map')}</div>${eventPanel()}`;
+}
+function sliderRow(id, label, term, min, max, val, unit) {
+  return `<div class="slider"><label for="${id}">${term ? fmtTerm(term, label) : label}</label><output id="${id}-o">${val}${unit}</output><input type="range" id="${id}" min="${min}" max="${max}" step="1" value="${val}"></div>`;
+}
+function forecastHTML() {
+  const m = money();
+  return `<div class="kv"><span>Доходы за ход</span><b>${m.rev.toFixed(1)} млрд $</b></div>
+    <div class="kv"><span>Расходы за ход</span><b>${m.exp.toFixed(1)} млрд $</b></div>
+    ${m.mb ? `<div class="kv"><span>Эффекты решений</span><b>${sg(m.mb)} млрд $</b></div>` : ''}
+    <div class="kv"><span>Прогноз баланса</span><b class="${m.bal < 0 ? 'bad' : 'good'}">${sg(m.bal)} млрд $</b></div>`;
+}
+function viewEco() {
+  const sp = S.spend;
+  const mods = S.mods.length ? S.mods.map(m => `<div class="kv"><span>«${m.label}»</span><span>${m.stat === 'growth' ? 'рост ВВП' : m.stat === 'budget' ? 'бюджет' : 'инфляция'} ${sg(m.val)}, ещё ${m.turns} ход.</span></div>`).join('') : '<p class="hint">Действующих эффектов нет.</p>';
+  return `${pendingBanner()}
+  <div class="row2">
+    <div class="panel"><h3>Налоги и расходы</h3>
+      ${sliderRow('s-tax', 'Налоговая ставка', 'налоговая ставка', 10, 40, S.tax, '%')}
+      ${sliderRow('s-social', 'Социальные расходы', '', 0, 25, sp.social, ' млрд')}
+      ${sliderRow('s-infra', 'Инфраструктура', '', 0, 20, sp.infra, ' млрд')}
+      ${sliderRow('s-security', 'Безопасность', '', 0, 15, sp.security, ' млрд')}
+      ${sliderRow('s-ecology', 'Экология', '', 0, 10, sp.ecology, ' млрд')}
+      <p class="hint">Настройки вступают в силу в конце хода. Расходы указаны за квартал.</p>
+    </div>
+    <div class="panel"><h3>Бюджет этого хода</h3><div id="forecast">${forecastHTML()}</div>
+      <h3 style="margin-top:14px">Действующие эффекты</h3>${mods}</div>
+  </div>
+  <div class="panel"><h3>Динамика</h3><div class="charts">
+    <div><h4>${fmtTerm('рост ВВП', 'Рост ВВП')}, %</h4>${spark(S.hist.growth, {labels: 1, h: 90, label: 'Рост ВВП по ходам'})}</div>
+    <div><h4>${fmtTerm('инфляция', 'Инфляция')}, %</h4>${spark(S.hist.infl, {labels: 1, h: 90, color: 'var(--warn)', label: 'Инфляция по ходам'})}</div>
+    <div><h4>${fmtTerm('бюджет', 'Бюджет')}, млрд $</h4>${spark(S.hist.budget, {labels: 1, h: 90, color: 'var(--good)', label: 'Бюджет по ходам'})}</div>
+  </div></div>`;
+}
+function viewSoc() {
+  const bar = (name, v, c) => `<div class="bar" style="--c:${c}">${name}<div class="tube"><div class="fill" style="height:${Math.max(4, v)}%"></div></div><b>${Math.round(v)}%</b></div>`;
+  const regs = Object.entries(REG).map(([id, r]) => { const [t, c] = tLabel(S.regions[id].t); return `<div class="rl"><span>${r.name}</span><b class="${c}">${t}</b></div>`; }).join('');
+  return `${pendingBanner()}
+  <div class="row2">
+    <div class="panel"><h3>Тепловая карта настроений</h3><div class="mapbox">${mapSVG('heat')}</div></div>
+    <div class="panel"><h3>Ключевые показатели</h3>
+      <div class="bars">${bar('Уровень счастья', S.happiness, '#2fe5b4')}${bar('Индекс протеста', S.protest, '#ff4f60')}${bar('Индекс лояльности', S.loyalty, '#3d8bff')}</div>
+      <h3 style="margin-top:14px">Региональные данные</h3>${regs}</div>
+  </div>`;
+}
+function viewPol() {
+  const grp = Object.entries(GROUPS).map(([k, n]) => `<div class="grp"><span>${n}</span><div class="tr"><i style="width:${S.groups[k]}%"></i></div><b>${Math.round(S.groups[k])}%</b></div>`).join('');
+  const dec = Object.entries(DECREES).map(([id, d]) => {
+    const left = S.decrees[id] ? d.cd - (S.turn - S.decrees[id]) : 0;
+    return `<div class="decree"><div><b>${d.title}</b><small>${d.d}</small><small>${chipsFor(d).replace(/<div class="chip /g, '<span class="chip ').replace(/<\/div>/g, '</span> ')}</small></div><button class="ghost" data-act="decree" data-id="${id}" ${left > 0 || S.report ? 'disabled' : ''}>${left > 0 ? 'Через ' + left + ' ход.' : 'Подписать'}</button></div>`;
+  }).join('');
+  const jr = S.journal.slice().reverse().slice(0, 14).map(j => j.kind === 'choice' ? `<div class="jr">Ход ${j.turn}: ${j.title}. <b>${j.choice}</b></div>` : j.kind === 'decree' ? `<div class="jr">Ход ${j.turn}: указ «${j.title}»</div>` : `<div class="jr">Ход ${j.turn}: последствие «${j.title}»</div>`).join('') || '<p class="hint">Решений пока нет.</p>';
+  return `${pendingBanner()}
+  <div class="row2">
+    <div class="panel"><h3>Поддержка групп</h3>${grp}<p class="hint">Средняя поддержка тянет за собой ${fmtTerm('лояльность', 'лояльность')} всей страны.</p></div>
+    <div class="panel"><h3>Указы</h3>${dec}</div>
+  </div>
+  <div class="panel"><h3>Журнал решений</h3>${jr}</div>`;
+}
+function render() {
+  if (!S) return;
+  renderNav(); renderRight();
+  const views = {map: viewMap, eco: viewEco, soc: viewSoc, pol: viewPol};
+  $('#center').innerHTML = `<div class="topbar"><span><b>Ход ${S.turn} из ${MAX_TURN}</b> · ${dateLabel()}</span><span class="btns"><button class="ghost" data-act="gloss">Глоссарий</button><button class="ghost" data-act="newgame">Новая игра</button></span></div><div class="view">${views[tab]()}</div>`;
+}
+
+/* ---------- Окна ---------- */
+function modal(html) { $('#mbox').innerHTML = html; $('#modal').hidden = false; const b = $('#mbox button.primary'); if (b) b.focus(); }
+function closeModal() { $('#modal').hidden = true; }
+function showIntro() {
+  modal(`<h2>Вектор власти</h2>
+  <p>Вы управляете страной пять лет, по кварталам. Каждый ход приходит событие, и вы выбираете один из трёх вариантов.</p>
+  <ul><li>Решения сразу меняют бюджет, ${fmtTerm('лояльность', 'лояльность')}, ${fmtTerm('инфляция', 'инфляцию')} и ${fmtTerm('ВВП', 'ВВП')}.</li>
+  <li>Часть последствий приходит позже. Краткосрочная выгода может обернуться кризисом через несколько ходов.</li>
+  <li>Непонятные слова подчёркнуты. Наведите курсор или нажмите на них.</li>
+  <li>Вкладки слева: налоги и расходы, настроения регионов, поддержка групп и указы.</li></ul>
+  <p>Если лояльность упадёт ниже 12%, протест достигнет 92% или долг превысит 80 млрд $, игра закончится досрочно.</p>
+  <div class="act"><button class="primary" data-act="closemodal">Начать</button></div>`);
+}
+function showReport() {
+  const r = S.report, rows = [['budget', 'Бюджет', 'млрд $', 1], ['growth', 'Рост ВВП', '%', 1], ['inflation', 'Инфляция', '%', 1], ['loyalty', 'Лояльность', '%', 0], ['happiness', 'Счастье', '%', 0], ['protest', 'Протест', '%', 0]];
+  const body = rows.map(([k, n, u, d]) => { const dv = r.after[k] - r.before[k]; const good = BAD_UP[k] ? dv < 0 : dv > 0; const cl = Math.abs(dv) < 0.05 ? '' : good ? 'good' : 'bad';
+    return `<tr><td>${n}</td><td>${r.before[k].toFixed(d)}</td><td>${r.after[k].toFixed(d)} ${u}</td><td class="${cl}">${sg(dv, d)}</td></tr>`; }).join('');
+  const later = (r.o.delayed || []).length ? '<p class="hint">У этого решения есть отложенные последствия. Следите за новостями в следующие ходы.</p>' : '';
+  modal(`<h2>Итоги хода ${S.turn}</h2><p><b>${r.ev.title}</b><br>Ваш выбор: <b>${r.o.title}</b></p>
+  <div class="lesson">${fmt(r.o.lesson)}</div>
+  <table class="delta"><tr><th></th><th>Было</th><th>Стало</th><th>Δ</th></tr>${body}</table>${later}
+  <div class="act"><button class="primary" data-act="next">${S.turn >= MAX_TURN ? 'Завершить срок' : 'Следующий ход'}</button></div>`);
+}
+function showEnd() {
+  const sc = score(), rank = sc >= 75 ? 'Мудрый правитель' : sc >= 55 ? 'Опытный управленец' : sc >= 40 ? 'Выживший' : 'Слабое правление';
+  const choices = S.journal.filter(j => j.kind === 'choice').map(j => `<div class="jr">Ход ${j.turn}: ${j.title}. <b>${j.choice}</b></div>`).join('');
+  modal(`<h2>${S.over.title}</h2><p>${S.over.text}</p>
+  <div class="score">${sc}</div><p><b>${rank}</b>. Итоговый счёт учитывает лояльность, счастье, ВВП, бюджет, инфляцию и экологию.</p>
+  <table class="delta"><tr><th>Показатель</th><th>Итог</th></tr><tr><td>Ход</td><td>${S.turn} из ${MAX_TURN}</td></tr><tr><td>Бюджет</td><td>${S.budget.toFixed(1)} млрд $</td></tr><tr><td>Рост ВВП</td><td>${sg(S.growth)}%</td></tr><tr><td>Инфляция</td><td>${S.inflation.toFixed(1)}%</td></tr><tr><td>Лояльность</td><td>${Math.round(S.loyalty)}%</td></tr><tr><td>Счастье</td><td>${Math.round(S.happiness)}%</td></tr><tr><td>Экология</td><td>${Math.round(S.ecology)}%</td></tr></table>
+  <h3 style="margin-top:14px;font-size:15px">Ваши решения</h3>${choices || '<p class="hint">Решений не было.</p>'}
+  <div class="act"><button class="ghost" data-act="closemodal">Закрыть</button><button class="primary" data-act="newgame">Сыграть ещё раз</button></div>`);
+}
+function showGloss() {
+  modal(`<h2>Глоссарий</h2><dl class="gl">${Object.entries(GL).sort((a, b) => a[0].localeCompare(b[0], 'ru')).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl><div class="act"><button class="primary" data-act="closemodal">Закрыть</button></div>`);
+}
+
+/* ---------- События интерфейса ---------- */
+const ACTS = {
+  tab: d => { tab = d.id; render(); },
+  choose: d => choose(+d.i),
+  next: nextTurn,
+  newgame: () => { closeModal(); S = null; startGame(); },
+  gloss: showGloss,
+  closemodal: closeModal,
+  decree: d => useDecree(d.id)
+};
+document.addEventListener('click', e => {
+  const t = e.target.closest('.term');
+  if (t) { showTip(t); return; }
+  const b = e.target.closest('[data-act]');
+  if (b) ACTS[b.dataset.act](b.dataset);
+});
+document.addEventListener('input', e => {
+  const m = {'s-tax': ['tax', '%'], 's-social': ['social', ' млрд'], 's-infra': ['infra', ' млрд'], 's-security': ['security', ' млрд'], 's-ecology': ['ecology', ' млрд']}[e.target.id];
+  if (!m) return;
+  const v = +e.target.value;
+  if (m[0] === 'tax') S.tax = v; else S.spend[m[0]] = v;
+  $('#' + e.target.id + '-o').textContent = v + m[1];
+  $('#forecast').innerHTML = forecastHTML();
+});
+const tip = $('#tip');
+function showTip(el) {
+  const k = el.dataset.term; if (!GL[k]) return;
+  tip.innerHTML = `<b>${k}</b>${GL[k]}`; tip.hidden = false;
+  const r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+  let x = Math.min(Math.max(8, r.left), innerWidth - tw - 8), y = r.bottom + 6;
+  if (y + th > innerHeight - 8) y = r.top - th - 6;
+  tip.style.left = x + 'px'; tip.style.top = Math.max(8, y) + 'px';
+}
+document.addEventListener('mouseover', e => { const t = e.target.closest('.term'); if (t) showTip(t); });
+document.addEventListener('mouseout', e => { if (e.target.closest('.term')) tip.hidden = true; });
+document.addEventListener('focusin', e => { const t = e.target.closest && e.target.closest('.term'); if (t) showTip(t); });
+document.addEventListener('focusout', () => { tip.hidden = true; });
+document.addEventListener('scroll', () => { tip.hidden = true; }, true);
+document.addEventListener('click', e => { if (!e.target.closest('.term')) tip.hidden = true; }, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { tip.hidden = true; if (S && !S.report && !S.over) closeModal(); } });
+
+window.VV = {get S() { return S; }, choose, nextTurn, startGame, tick, EV, checkOver, score, fmt};
+startGame();
+</script>
